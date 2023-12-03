@@ -1,0 +1,129 @@
+---
+title: "Assignment 6"
+output:
+  word_document: default
+  html_document: default
+date: "2023-05-18"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Question 1:
+To prevent tree fungus, city parks treated trees with a chemical. To investigate whether the treatment is effective, seven parks that applied the treatment were chosen. At each park, four sites were chosen and the tree surface affected by fungus was measured (in m2) for two treated and two untreated trees.
+
+a. Load the data and explore it using str function and the graphs (use the code below). What do the graphs tell you?
+
+After loading in the data we can see that the variables in the data frame are AffectedArea, Treated, Park and Site. By converting both the Park and Site variables to factors, various plots can be created.
+
+```{r}
+fungus_df <- read.csv("/Users/robbi/Downloads/tree_fungus.csv")
+str(fungus_df)
+#This adds prefix "Park" to the Park variable for clear labels in the panels of the graphs
+fungus_df$Park <- paste("Park", fungus_df$Park)
+fungus_df$Park <- as.factor(fungus_df$Park)
+fungus_df$Site <- as.factor(fungus_df$Site)
+library(ggplot2)
+ggplot(fungus_df, aes(x = Treated, y = AffectedArea)) + geom_point()
+ggplot(fungus_df, aes(x = Treated,y = AffectedArea, color=Site, shape=Site))+
+geom_jitter(width=0.1)+ facet_grid(.~Park)
+ggplot(fungus_df, aes(x = Site,y = AffectedArea, color=Site, shape=Site))+
+geom_boxplot()+ facet_grid(.~Park)
+```
+The first plot shows the relationship between the affected area variable and whether or not the tree was treated or not. We can see that trees that were treated had a lower affected area than those that did not get treated.
+The second plot shows the relationships between the affected area, the site and whether the tree was treated. It is also faceted to show the different parks. We can see that average affected area is different across different parks and that the trend of smaller affected areas for treated trees is universal across the various parks. It is difficult to see any relationships or trends when looking at the different sites.
+The third plot shows the distributions of affected areas across the different sites within each park. We can see that trends for different sites vary from park to park.
+
+b. Which variables are random effects? Are the random effects crossed or nested? Explain why.
+
+The random effect variables are the factors Park and Site because they show random variability across the model. The random effects are nested because each park has multiple sites and each site belongs to only one park.
+
+c. Fit a linear mixed model with two random effects. Use the code below replacing response,
+fixed_effect, random1, and random2 with corresponding variables. Answer the research question by
+fitting another model and significance testing (code not provided).
+
+When creating the linear mixed model with two random effects, we replace 'response' with AffectedArea, 'fixed_effect' with Treated, 'random1' with Park and 'random2' with Site. To answer the research question of 'Does the treatment of tree fungus decrease the tree surface affected by fungus' we have to fit another linear mixed model with only one intercept to test the null hypothesis that treatment has no effect on the affected area of the trees. We will call this fungus_df.m0. Then we use the anova function to test for the significance of the fixed effects.
+```{r}
+library(lme4)
+fungus_df.m1 <- lmer(AffectedArea ~ Treated + (1 | Park) + (1 |Park:Site),
+data=fungus_df)
+fungus_df.m0 <- lmer(AffectedArea ~ (1 | Park) + (1 |Park:Site), data=fungus_df)
+anova(fungus_df.m0,fungus_df.m1)
+```
+From the anova function, we can see that the p-value of the Treated variable in the alternative model is much less than 0.05 (0.0001822<0.05). Therefore, this suggests that the treatment variable is significant to the model and has an effect on the affected area of the tree fungus, which answers our research question. 
+
+d. Use summary and ranef functions to print the estimates.
+• What is the estimated average affected area for treated trees?
+• What is the average affected area for untreated trees in park 6 site 4?
+
+```{r}
+summary(fungus_df.m1)
+ranef(fungus_df.m1)
+```
+From the summary function output, we can see the estimate for the Treated coefficient is -0.10237. This number represents the difference of affected area of untreated and treated trees. As it is negative, this means that treated trees have lesser affected area than those untreated. The average affected area is calculated as the intercept estimate plus the Treatedyes estimate, which is 0.69254 m2. To find the average affected area of untreated trees in park 6 site 4, we take the intercept of untreated trees of 0.79491 and add the intercept of park 6 site 4 from the ranef output of -0.027989619. So the average affected are of untreated trees in park 6 site 4 is 0.76692 m2.
+
+
+Question 2:
+The data file cholesterol.csv contains cholesterol level measurements (LDL) taken monthly from 19 patients who were treated for high cholesterol levels. Three patients have missing measurements. The research question is to estimate the average rate of cholesterol drop.
+
+a. Load the data and check its structure. Convert integer variables that are categorical into factors (replace
+X with the necessary variable) and plot the graphs using the code below. Describe the trends you see in the data.
+
+```{r}
+chol_df <- read.csv("/Users/robbi/Downloads/cholesterol.csv")
+str(chol_df)
+chol_df$Patient <- as.factor(chol_df$Patient)
+library(ggplot2)
+ggplot(aes(y=LDL, x=Month, group=Patient, color=Patient), data=chol_df)+geom_point()+geom_line()
+```
+We confirm that the variables in the data are Month, Patient and LDL. We see from the plot that each patient sees a decrease in cholestoral levels over the 3 months. However, some patients can see an increase in LDL over a month long period. The change in LDL seems to vary from patient to patient.
+
+b. Fit three linear mixed models:
+• a random intercept model
+• a random slope model
+• a random slope and intercept model (with correlation between the slopes and intercepts)
+Use the code below replacing the response, fixed_effect, and random_effect with corresponding variables.
+
+In the code below, we replace response with LDL, fixed_effect with Month, and random_effect with Patient.
+```{r}
+library(lme4)
+chol.m1 <- lmer(LDL~1+Month+ (1|Patient), data=chol_df)
+chol.m2 <- lmer(LDL~1+Month + (0+Month|Patient), data=chol_df)
+chol.m3 <- lmer(LDL~1+Month + (1+Month|Patient), data=chol_df)
+```
+
+c. Print summary for model chol.m3. What is the correlation of random effects? How would you interpret it?
+
+```{r}
+summary(chol.m3)
+```
+The summary output shows the estimated coefficients, standard errors and t-values for the fixed and random effects. The correlation of the random effects is 0.15. This represents the relationship between the random intercepts and slopes of the patients. As this value is positive, we can interpret this by saying that patients with greater intercepts tend to have a steeper slope of their LDL over the months.
+
+d. Fit in a model with a random slope and a random intercept without correlation between the slopes and intercepts replacing the response, fixed_effect, and random_effect with corresponding variables in the code below.
+
+In the code below, we replace response with LDL, fixed_effect with Month, and random_effect with Patient.
+```{r}
+chol.m4 <- lmer(LDL~1+Month + (1|Patient) +
+(0+Month|Patient), data=chol_df)
+```
+
+e. Use AIC function to calculate Akaike information criterion. Which model has the best fit?
+
+```{r}
+AIC(chol.m1, chol.m2, chol.m3, chol.m4)
+```
+The output of the AIC function shows the Akaike information criterion for each model. The model with lowest AIC is said to have the best fit, meaning that the 4th model has the best fit for our data.
+
+f. Print estimated fixed and random effects for the preferred model using fixef and ranef functions.
+• What is the estimated average cholesterol drop rate (average slope)?
+• Which patient has the fastest drop rate?
+To access random intercepts and slopes as vectors use ranef(best_model)[[1]][1] and ranef(best_model)[[1]][2] respectively. Replace best_model with the corresponding model.
+
+In the code below, we replace best_model with chol.m4 as it has the best fit.
+```{r}
+fixef(chol.m4)
+ranef(chol.m4)
+```
+The estimated average cholesterol drop rate can be found from the estimate for Month in fixed effects, which is -24.3372. This means that for each month, the average cholesterol LDL drops by 24.3372 units.
+The patient with the fastest drop rate is the one with the steepest negative slope in the random effects estimates. This is patient 12 as it has a slope estimate of -16.711 in the random effects, meaning that their overall drop rate is 16.711+24.3372 = 41.0482.
+

@@ -1,0 +1,97 @@
+---
+title: "Assignment 7"
+author: "Robert Ivill"
+date: "2023-05-25"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Question 1 [80% of the marks]
+The data file seeds.csv contains measurements of geometrical properties of kernels belonging to three different varieties of wheat. The measurements are: Area, Perimeter, KernelLength, KernelWidth, KernelGrooveLength (in cm on an X-ray image) and two measures of shape: Compactness, and AsymmetryCoef.
+
+a. Load the data, print the summary, remove Variety variable and plot pairwise scatterplots. Comment on a few features you notice in the scatterplot matrix.
+
+```{r}
+seeds <- read.csv("/Users/robbi/Downloads/seeds.csv")
+summary(seeds)
+seeds_df <- seeds[!names(seeds) %in% "Variety"]
+pairs(~ .,data=seeds_df,
+main="Simple Scatterplot Matrix")
+```
+From the scatterplot matrix, we can see that quite a few of the variables share a positive linear relationship with each other. This includes area and perimeter, kernel length and kernel width, and kernel groove length and perimeter. The asymmetry coefficient seems to have little to no pattern when compared to other variables. Compactness also has a less clear relationship with the other variables.
+
+b. Calculate the variance of each variable. Explain why you would scale the variables before performing principal component analysis (PCA)?
+
+``` {r}
+apply(seeds_df, 2, var)
+```
+By calculating the variance of each variable, we can see the variability within the dataset. It is important to scale the variables before performing PCA because PCA is affected heavily by the relative scales of each variable. The difference in variance of Area and Compactness is not necessarily because area is more variable, but because it is on a different scale to compactness. By scaling, we make all of the variables to have a standard deviation of one, making it easier for PCA to use all of the variables equally and remove bias in it.
+
+c. Perform PCA. Print the summary of the PCA and create a scree plot to answer the questions:
+• How much of the variance is explained by the first four principal components?
+• How many principal components would you choose according to the elbow rule? Is this enough to explain at least 80% of the variance in the data?
+• Assuming you want to explain at least 80% of your data, how many principal components would you choose according to the elbow rule?
+
+```{r}
+seeds_pca <- prcomp(seeds_df, scale=TRUE)
+library(factoextra)
+summary(seeds_pca)
+fviz_eig(seeds_pca)
+```
+To find the proportion of variance explained by the first four principal components, we add the values of PC1-4 for the proportion of variance in the summary output. These values are 0.7187, 0.1711, 0.09686, and 0.00977. These sum to 0.99643 or approximately 99.6% of the variance.
+To find how many principal components to choose according to the elbow rule, we find the elbow of the graph where the plot starts to level off after steep declines. In this plot, the elbow point is at 4, implying that the first three principal components explain the most variation in the data. We know that the first 3 components make up around 98.6% of the variance according to our first answer in this question. As this proportion is greater than 80%, the three components can explain at least 80% of the variance in the data.
+As we have confirmed that the first three principal components can explain at least 80% of the variance, we would choose these three to explain at least 80% of our data.
+
+d. Visualise the results using fviz_pca_biplot function. Referring to the biplot answer the following questions:
+• Name three variables that are highly correlated with the first principal component. Are they negatively or positively correlated?
+• What do you think the first principal component explains?
+• Which two variables have the highest absolute loadings on the second principal component? What does this mean?
+• Does seed 152 (located in the upper right corner) has high or low Compactness?
+
+```{r}
+fviz_pca_biplot(seeds_pca, col.var = "red", col.ind="grey")
+```
+From the PCA biplot, we can see that the variables that are highly correlated with the first principal component are area, perimeter and kernel width. All of these are negatively correlated to PC1. The first principal component explains the majority of proportion of variance in the dataset, as we can see with how many variables are correlated to it. The variables with the highest absolute loadings on the second principal component are the Asymmetry Coefficient and compactness. This means that these variables account for most of the variance in PC2. Seed 152 has a low compactness, as it is on the opposite side of the biplot to the compactness variable vector.
+
+e. Now create a biplot where the seeds are grouped by variety. Explain the differences in the varieties in terms of the kernel sizes and asymmetry coefficients.
+
+```{r}
+fviz_pca_biplot(seeds_pca, col.var = "slategrey", col.ind=as.factor(seeds$Variety), label="var")
+```
+
+The seeds with green variability have larger kernel sizes as they are all in the direction of the kernel size vectors. They have a bit of variability in these sizes as the points are spread out a bit. They have quite an average assymetry coefficient as most of the points are roughly perpendicular to the asymmetry coefficient with some variability. The red seeds are quite variable for both asymmetry and kernel size as the points are spread out quite a bit. They have smaller kernel sizes and asymmetry coefficient as they are on the opposite side to those vectors. The blue seeds have the smallest kernel size as they are on the opposite side to the kernel size vectors. They have slighly larger asymmetry coefficients to the green seeds. They have lower variability with each other as they are quite compactly spread.
+
+Question 2 [20% of the marks]
+
+Weather dataset contains different weather related characteristics on 244 different days in Algeria forest.
+
+a. Load the data, print the structure. Scale the data and plot the withiness against the number of clusters.How many clusters would you choose for a k-mean clustering analysis?
+
+```{r}
+weather <- read.csv("/Users/robbi/Downloads/weather.csv")
+str(weather)
+weather_scaled <- as.data.frame(scale(weather))
+fviz_nbclust(weather, kmeans, method = "wss")
+```
+To find the number of clusters to choose for a k-mean cluster analysis, we must inspect the plot and choose the elbow point where the within sum of squares begins to level off. For this dataset, the elbow point we would choose is 3, as that is where the initial drop begins to level off. Therefore we choose clusters for the analysis.
+
+b. Perform a k-mean clustering analysis with the number of clusters chosen in a. (replace K in the code below with the corresponding number). Visualise the clusters in the first two principal component plane using fviz_cluster function and the code below. Is the first principal component enough to separate the clusters?
+
+In the code below, we replaced K with 3 as that is what we chose in a.
+```{r}
+weather_ca <- kmeans(weather_scaled, 3)
+fviz_cluster(weather_ca, data = weather_scaled, geom = "point", ellipse.type = "none", ggtheme = theme_bw())
+```
+To see if the first principal component is enough to seperate the clusters, we look for distinct seperations or patterns among the clusters. The clusters look quite well separated with little overlap, therefore we can conclude that PC1 is enough to separate the clusters. 
+
+c. Print the centers of the clusters. Does the cluster with highest average temperatures also have highest average rain fall?
+
+```{r}
+weather_ca$centers
+```
+From the centers of the clusters, we can see that the 3rd cluster has the highest average temperature, with 0.808. If we then look at the rain variable, we can see that the 2nd cluster has the highest average rainfall with 0.7854. Therefore, the cluster with the highest average temperature does not have the highest average rainfall. 
